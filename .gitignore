@@ -1,0 +1,47 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+terraform.tfstate
+terraform.tfstate.backup
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Sensitive variables and files
+*.tfvars
+*.tfvars.json
+secret.tfvars
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+.env
+
+# Local editor/IDE files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
+
+# Coverage / test artifacts
+coverage/
+
+# Ignore local backend files
+.terraform.tfstate*
+
+# Optional: ignore bootstrap state and backup files if present
+bootstrap/terraform.tfstate
+bootstrap/terraform.tfstate.backup
