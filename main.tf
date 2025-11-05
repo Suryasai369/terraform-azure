@@ -86,5 +86,27 @@ resource "azurerm_network_security_group" "nsg" {
 
 resource "azurerm_subnet_network_security_group_association" "nsgattach" {
   network_security_group_id = azurerm_network_security_group.nsg.id
-  subnet_id = azurerm_subnet.subnet.id
+  subnet_id                 = azurerm_subnet.subnet.id
+}
+
+resource "azurerm_network_interface" "vm1_nic" {
+  name                = "NIC1"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  ip_configuration {
+    name                          = "ipconfig1"
+    subnet_id                     = azurerm_subnet.subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+resource "azurerm_network_interface" "vm2_nic" {
+  name                = "NIC2"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  ip_configuration {
+    name                          = "ipconfig2"
+    subnet_id                     = azurerm_subnet.subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
 }
