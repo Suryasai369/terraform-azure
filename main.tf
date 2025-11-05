@@ -31,12 +31,3 @@ resource "azurerm_resource_group" "rg" {
     Team = "TF-team"
   }
 }
-
-resource "azurerm_resource_group" "rg1" {
-  name     = "Testing-Remote-State"
-  location = "eastus"
-  tags = {
-    Env  = "Testing"
-    Team = "TF-team"
-  }
-}
