@@ -42,6 +42,24 @@ coverage/
 # Ignore local backend files
 .terraform.tfstate*
 
-# Optional: ignore bootstrap state and backup files if present
+# Bootstrap specific patterns
+bootstrap/.terraform/
+bootstrap/.terraform.lock.hcl
 bootstrap/terraform.tfstate
 bootstrap/terraform.tfstate.backup
+bootstrap/crash.log
+bootstrap/*.tfvars
+bootstrap/*.tfvars.json
+bootstrap/override.tf
+bootstrap/override.tf.json
+bootstrap/*_override.tf
+bootstrap/*_override.tf.json
+bootstrap/.terraform.tfstate*
+bootstrap/dev.tf
+
+# Ignore any local environment or credential files
+bootstrap/.env*
+bootstrap/credentials.*
+bootstrap/secrets.*
+bootstrap/*.key
+bootstrap/*.pem
