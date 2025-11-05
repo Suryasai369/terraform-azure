@@ -27,6 +27,8 @@ provider "azurerm" {
   client_secret   = var.client_secret
 }
 
+/* Resource Group creation */
+
 resource "azurerm_resource_group" "rg" {
   name     = "WebApp-RG"
   location = "eastus"
@@ -35,4 +37,22 @@ resource "azurerm_resource_group" "rg" {
     Team = "TF-team"
   }
 }
+
+/* Networking part Creation (Vnet, Subnet, NSG and its delegation) */
+
+resource "azurerm_virtual_network" "vnet" {
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  address_space       = ["10.0.0.0/16"]
+  name                = "WebApp-VNET"
+}
+
+resource "azurerm_subnet" "subnet" {
+  name                 = "WebApp-Subnet"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.0.1.0/24"]
+}
+
+
 
