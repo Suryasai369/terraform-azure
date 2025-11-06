@@ -71,7 +71,7 @@ resource "azurerm_network_security_group" "nsg" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "80"
-    source_address_prefix      = "*"
+    source_address_prefix      = "AzureLoadBalancer"
     destination_address_prefix = "*"
   }
 
@@ -91,6 +91,15 @@ resource "azurerm_network_security_group" "nsg" {
 resource "azurerm_subnet_network_security_group_association" "nsgattach" {
   network_security_group_id = azurerm_network_security_group.nsg.id
   subnet_id                 = azurerm_subnet.subnet.id
+}
+
+resource "azurerm_public_ip" "lbpip" {
+  name                = "LB-PIP"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  ip_version          = "IPv4"
 }
 
 resource "azurerm_network_interface" "vm1_nic" {
@@ -115,6 +124,38 @@ resource "azurerm_network_interface" "vm2_nic" {
   }
 }
 
+locals {
+  nginx_cloud_init = <<-CLOUD
+    #cloud-config
+    package_update: true
+    packages: [nginx, jq, curl]
+
+    write_files:
+      - path: /usr/local/bin/render-index.sh
+        permissions: '0755'
+        content: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          COMPUTE=$(curl -s -H "Metadata: true" "http://169.254.169.254/metadata/instance/compute?api-version=2021-02-01")
+          VMNAME=$(echo "$COMPUTE" | jq -r .name)
+          HOSTNAME=$(hostname)
+          IP=$(hostname -I | awk "{print \$1}")
+          cat >/var/www/html/index.html <<EOF
+          <html>
+            <body style="font-family: system-ui; margin:2rem">
+              <h1>Served by: $VMNAME</h1>
+              <p><b>Hostname:</b> $HOSTNAME</p>
+              <p><b>Private IP:</b> $IP</p>
+            </body>
+          </html>
+          EOF
+
+    runcmd:
+      - /usr/local/bin/render-index.sh
+      - systemctl enable --now nginx
+  CLOUD
+}
+
 resource "azurerm_linux_virtual_machine" "vm1" {
   name                            = "WebApp-VM1"
   location                        = azurerm_resource_group.rg.location
@@ -124,6 +165,7 @@ resource "azurerm_linux_virtual_machine" "vm1" {
   admin_password                  = var.admin_password
   network_interface_ids           = [azurerm_network_interface.vm1_nic.id]
   disable_password_authentication = false
+  custom_data                     = base64encode(local.nginx_cloud_init)
 
   source_image_reference {
     publisher = "Canonical"
@@ -150,6 +192,7 @@ resource "azurerm_linux_virtual_machine" "vm2" {
   admin_password                  = var.admin_password
   network_interface_ids           = [azurerm_network_interface.vm2_nic.id]
   disable_password_authentication = false
+  custom_data                     = base64encode(local.nginx_cloud_init)
 
   source_image_reference {
     publisher = "Canonical"
@@ -165,4 +208,53 @@ resource "azurerm_linux_virtual_machine" "vm2" {
   }
 
   boot_diagnostics {}
+}
+
+resource "azurerm_lb" "lb" {
+  name                = "WebApp-LB"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku                 = "Standard"
+
+  frontend_ip_configuration {
+    name                 = "LB-FrontEnd"
+    public_ip_address_id = azurerm_public_ip.lbpip.id
+  }
+}
+
+resource "azurerm_lb_backend_address_pool" "bepool" {
+  name            = "WebApp-Backend"
+  loadbalancer_id = azurerm_lb.lb.id
+}
+
+resource "azurerm_lb_probe" "lbprobe" {
+  name                = "HTTP-Probe"
+  loadbalancer_id     = azurerm_lb.lb.id
+  port                = 80
+  protocol            = "Tcp"
+  interval_in_seconds = 5
+  number_of_probes    = 2
+}
+
+resource "azurerm_lb_rule" "lbrule" {
+  name                           = "HTTP-80"
+  loadbalancer_id                = azurerm_lb.lb.id
+  protocol                       = "Tcp"
+  frontend_port                  = 80
+  backend_port                   = 80
+  frontend_ip_configuration_name = "LB-FrontEnd"
+  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.bepool.id]
+  probe_id                       = azurerm_lb_probe.lbprobe.id
+}
+
+resource "azurerm_network_interface_backend_address_pool_association" "bvm1" {
+  network_interface_id    = azurerm_network_interface.vm1_nic.id
+  ip_configuration_name   = "ipconfig1"
+  backend_address_pool_id = azurerm_lb_backend_address_pool.bepool.id
+}
+
+resource "azurerm_network_interface_backend_address_pool_association" "bvm2" {
+  network_interface_id    = azurerm_network_interface.vm2_nic.id
+  ip_configuration_name   = "ipconfig2"
+  backend_address_pool_id = azurerm_lb_backend_address_pool.bepool.id
 }
