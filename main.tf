@@ -20,7 +20,11 @@ terraform {
 }
 
 provider "azurerm" {
-  features {}
+  features {
+    virtual_machine {
+      delete_os_disk_on_deletion = true
+    }
+  }
   subscription_id = var.subscription_id
   tenant_id       = var.tenant_id
   client_id       = var.client_id
@@ -109,4 +113,56 @@ resource "azurerm_network_interface" "vm2_nic" {
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
   }
+}
+
+resource "azurerm_linux_virtual_machine" "vm1" {
+  name                            = "WebApp-VM1"
+  location                        = azurerm_resource_group.rg.location
+  resource_group_name             = azurerm_resource_group.rg.name
+  size                            = "Standard_B1s"
+  admin_username                  = var.admin_username
+  admin_password                  = var.admin_password
+  network_interface_ids           = [azurerm_network_interface.vm1_nic.id]
+  disable_password_authentication = false
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
+  }
+
+  os_disk {
+    name                 = "osdisk-vm1"
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  boot_diagnostics {}
+}
+
+resource "azurerm_linux_virtual_machine" "vm2" {
+  name                            = "WebApp-VM2"
+  location                        = azurerm_resource_group.rg.location
+  resource_group_name             = azurerm_resource_group.rg.name
+  size                            = "Standard_B1s"
+  admin_username                  = var.admin_username
+  admin_password                  = var.admin_password
+  network_interface_ids           = [azurerm_network_interface.vm2_nic.id]
+  disable_password_authentication = false
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
+  }
+
+  os_disk {
+    name                 = "osdisk-vm2"
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  boot_diagnostics {}
 }

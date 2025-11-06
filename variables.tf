@@ -18,3 +18,16 @@ variable "client_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "admin_username" {
+  default = "azadmin"
+}
+
+variable "admin_password" {
+  type      = string
+  sensitive = true
+  validation {
+    condition     = length(var.admin_password) >= 10
+    error_message = "Admin password must be more than 10 letters"
+  }
+}
